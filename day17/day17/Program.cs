@@ -22,7 +22,7 @@ namespace day5
         int currentColumn = 0;
 
         Point startPos = new Point();
-
+        long dust = 0;
 
         long offset = 0;
 
@@ -33,6 +33,10 @@ namespace day5
           values.Add(0);
 
         int index = 0;
+
+        string[] patterns = { "A,B,A,C,B,C,A,B,A,C\n", "R,6,L,10,R,8,R,8\n", "R,12,L,8,L,10\n", "R,12,L,10,R,6,L,10\n" };
+        int patternFunctionIndex = 0;
+        int patternIndex = 0;
 
         while (index < values.Count)
         {
@@ -102,13 +106,30 @@ namespace day5
               break;
 
             case '3':
-              //intputVal = Console.Read();
-              values[param1Index] = intputVal;
+              if (patternIndex == patterns.Length)
+              {
+                values[param1Index] = 10;
+                break;
+              }
+
+
+              long currentval = patterns[patternIndex][patternFunctionIndex];
+
+              values[param1Index] = currentval;
+              patternFunctionIndex++;
+
+              if (patternFunctionIndex == patterns[patternIndex].Length)
+              {
+                patternFunctionIndex = 0;
+                patternIndex++;
+              }
               break;
 
             case '4':
+
               long val = values[param1Index];
 
+              dust = val;
               char c = ' ';
               switch (val)
               {
@@ -162,75 +183,77 @@ namespace day5
           index += numarParametrii;
         }
 
-        int totalAllignment = 0;
-        for (int i = 0; i < size; i++)
-        {
-          for (int j = 0; j < size; j++)
-          {
-            Console.Write(map[j, i]);
-          }
-          //Console.Write(" " + i);
-          Console.WriteLine();
-        }
+        Console.WriteLine(dust);
 
-        for (int i = 0; i < size; i++)
-        {
-          for (int j = 0; j < size; j++)
-          {
-            if (IsIntersection(map, i, j))
-            {
-              map[i, j] = 'O';
-              totalAllignment += i * j;
-              Console.SetCursorPosition(i, j);
-              Console.Write('O');
-            }
-          }
-        }
+        //int totalAllignment = 0;
+        //for (int i = 0; i < size; i++)
+        //{
+        //  for (int j = 0; j < size; j++)
+        //  {
+        //    Console.Write(map[j, i]);
+        //  }
+        //  //Console.Write(" " + i);
+        //  Console.WriteLine();
+        //}
 
-        Console.SetCursorPosition(0, 100);
-        Console.WriteLine(totalAllignment);
+        //for (int i = 0; i < size; i++)
+        //{
+        //  for (int j = 0; j < size; j++)
+        //  {
+        //    if (IsIntersection(map, i, j))
+        //    {
+        //      map[i, j] = 'O';
+        //      totalAllignment += i * j;
+        //      Console.SetCursorPosition(i, j);
+        //      Console.Write('O');
+        //    }
+        //  }
+        //}
 
-        Point currentDir = new Point(0, -1);
+        //Console.SetCursorPosition(0, 100);
+        //Console.WriteLine(totalAllignment);
 
-        Point currentPos = startPos;
-        char dirVal = ' ';
+        //  Point currentDir = new Point(0, -1);
 
-        string result = "";
+        //  Point currentPos = startPos;
+        //  char dirVal = ' ';
+
+        //  string result = "";
 
 
-        int len = 0;
-        try
-        {
+        //  int len = 0;
+        //  try
+        //  {
 
-          while (true)
-          {
-            Point next = GetNextNeighbour(map, currentPos, currentDir);
-            Point newDir = new Point(next.X - currentPos.X, next.Y - currentPos.Y);
+        //    while (true)
+        //    {
+        //      Point next = GetNextNeighbour(map, currentPos, currentDir);
+        //      Point newDir = new Point(next.X - currentPos.X, next.Y - currentPos.Y);
 
-            dirVal = GetDirVal(currentDir, newDir);
+        //      dirVal = GetDirVal(currentDir, newDir);
 
-            Console.WriteLine(result);
-            currentDir = newDir;
-            int count = -1;
-            do
-            {
-              currentPos.X += currentDir.X;
-              currentPos.Y += currentDir.Y;
+        //      Console.WriteLine(result);
+        //      currentDir = newDir;
+        //      int count = -1;
+        //      do
+        //      {
+        //        currentPos.X += currentDir.X;
+        //        currentPos.Y += currentDir.Y;
 
-              count++;
-            } while (currentPos.X >= 0 && currentPos.Y >= 0 && (map[currentPos.X, currentPos.Y] == '#' || map[currentPos.X, currentPos.Y] == 'O'));
+        //        count++;
+        //      } while (currentPos.X >= 0 && currentPos.Y >= 0 && (map[currentPos.X, currentPos.Y] == '#' || map[currentPos.X, currentPos.Y] == 'O'));
 
-            currentPos.X -= currentDir.X;
-            currentPos.Y -= currentDir.Y;
+        //      currentPos.X -= currentDir.X;
+        //      currentPos.Y -= currentDir.Y;
 
-            result += dirVal + count.ToString() + ",";
-            len++;
-          }
-        }
-        catch
-        {
-          Console.WriteLine(result);
-        }
+        //      result += dirVal + "," + count.ToString() + ",";
+        //      len++;
+        //    }
+        //  }
+        //  catch
+        //  {
+        //    Console.WriteLine(result);
+        //  }
       }
     }
 
@@ -244,6 +267,10 @@ namespace day5
       if (vertical != 0)
         return vertical > 0 ? 'L' : 'R';
 
+
+
+
+
       return ' ';
     }
 
@@ -254,7 +281,7 @@ namespace day5
         if (Math.Abs(dir.X) == Math.Abs(currentDir.X) || Math.Abs(dir.Y) == Math.Abs(currentDir.Y))
           continue;
 
-        if (currentPos.X + dir.X >= 0 && currentPos.Y + dir.Y >=0 && map[currentPos.X + dir.X, currentPos.Y + dir.Y] == '#')
+        if (currentPos.X + dir.X >= 0 && currentPos.Y + dir.Y >= 0 && map[currentPos.X + dir.X, currentPos.Y + dir.Y] == '#')
           return new Point(currentPos.X + dir.X, currentPos.Y + dir.Y);
       }
 
