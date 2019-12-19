@@ -12,55 +12,54 @@ namespace ConsoleApp1
 
     static void Main(string[] args)
     {
-      Tuple<char, int>[,] map;
 
-      int width = 0;
-      int height = 0;
+      Dictionary<Point, char> map = new Dictionary<Point, char>();
       Point start = new Point();
 
       using (StreamReader sr = new StreamReader("TextFile1.txt"))
       {
         string input = sr.ReadToEnd();
         string[] lines = input.Split("\r\n");
-        height = lines.Length;
-        width = lines[0].Length;
-
-        map = new Tuple<char, int>[height, width];
+        int height = lines.Length;
+        int width = lines[0].Length;
 
 
         for (int i = 0; i < height; i++)
           for (int j = 0; j < width; j++)
           {
+            Point p = new Point(i, j);
+
             if (lines[i][j] == '@')
-              start = new Point(j, i);
+              start = p;
+
+            map.Add(p, lines[i][j]);
 
             if (IsKey(lines[i][j]))
               totalKeys.Add(lines[i][j]);
-
-            map[i, j] = new Tuple<char, int>(lines[i][j], int.MaxValue);
           }
       }
 
-      PrintMap(map, width, height);
+      PrintMap(map);
 
-      Go(map, width, height, new List<Tuple<char, Tuple<Point, int>>>(), start, 0);
+      //var lee = Lee(map, start, new List<char>());
+      Go(map, new List<char>(), start, 0);
       Console.WriteLine(min);
     }
 
     static int min = int.MaxValue;
 
-    static void Go(Tuple<char, int>[,] map, int width, int height, List<Tuple<char, Tuple<Point, int>>> keys, Point start, int total)
+    static void Go(Dictionary<Point, char> map, List<char> keys, Point start, int total)
     {
       if (total >= min)
         return;
 
       Dictionary<char, int> result = new Dictionary<char, int>();
 
-      var foundkeys = Lee(map, width, height, start, keys);
+      var foundkeys = Lee(map, start, keys);
 
       if (keys.Count == totalKeys.Count - 1)
       {
-        total += foundkeys.ElementAt(0).Item2.Item2;
+        total += foundkeys[0].Item3;
         if (min > total)
           min = total;
         //Console.WriteLine(total);
@@ -69,74 +68,74 @@ namespace ConsoleApp1
 
       foreach (var key in foundkeys)
       {
-        List<Tuple<char, Tuple<Point, int>>> nextkeys = new List<Tuple<char, Tuple<Point, int>>>(keys);
-        nextkeys.Add(new Tuple<char, Tuple<Point, int>>(key.Item1, new Tuple<Point, int>(key.Item2.Item1, key.Item2.Item2)));
+        List<char> nextKeys = new List<char>(keys);
+        nextKeys.Add(key.Item1);
 
-        Go(map, width, height, nextkeys, key.Item2.Item1, total + key.Item2.Item2);
+        Go(map, nextKeys, key.Item2, total + key.Item3);
       }
     }
 
-    static void PrintMap(Tuple<char, int>[,] map, int width, int height)
+    static void PrintMap(Dictionary<Point, char> map)
     {
-      for (int i = 0; i < height; i++)
+      foreach (var p in map)
       {
-        for (int j = 0; j < width; j++)
-          Console.Write(map[i, j].Item1);
-        Console.WriteLine();
+        Console.SetCursorPosition(p.Key.Y, p.Key.X);
+        Console.Write(p.Value);
       }
     }
 
     // returns keys
-    static List<Tuple<char, Tuple<Point, int>>> Lee(Tuple<char, int>[,] map, int width, int height, Point start, List<Tuple<char, Tuple<Point, int>>> keys)
+    static List<Tuple<char, Point, int>> Lee(Dictionary<Point, char> map, Point start, List<char> keys)
     {
-      // lee
-      map = (Tuple<char, int>[,])map.Clone();
-      map[start.Y, start.X] = new Tuple<char, int>(map[start.Y, start.X].Item1, 0);
+      List<Tuple<char, Point, int>> foundKeys = new List<Tuple<char, Point, int>>();
 
-      List<Tuple<char, Tuple<Point, int>>> keysFound = new List<Tuple<char, Tuple<Point, int>>>();
+      // lee      
+      Queue<Point> queue = new Queue<Point>();
+      queue.Enqueue(start);
 
-      int discovered = 1;
-      while (discovered != 0)
+      Dictionary<Point, int> paths = new Dictionary<Point, int>();
+      paths.Add(start, 0);
+
+      while (queue.Any())
       {
-        discovered = 0;
+        Point p = queue.Dequeue();
 
-        int radius = 1;
-
-        while (radius < Math.Max(width, height))
+        foreach (var dir in directions)
         {
-          List<Point> edges = new List<Point>(0);
-          for (int i = 0; i <= radius * 2 + 1; i++)
-          {
-            edges.Add(new Point(start.X - radius, start.Y - radius + i)); // left
-            edges.Add(new Point(start.X + radius, start.Y - radius + i)); // right
-            edges.Add(new Point(start.X - radius + i, start.Y - radius)); // top
-            edges.Add(new Point(start.X - radius + i, start.Y + radius)); // bot
-          }
+          Point neighbour = new Point(p.X + dir.X, p.Y + dir.Y);
 
-          foreach (var edge in edges)
-          {
-            if (edge.X < 0 || edge.Y < 0 || edge.X >= width || edge.Y >= height || map[edge.Y, edge.X].Item1 == '#' || IsDoorLocked(map[edge.Y, edge.X].Item1, keys.Select(k => k.Item1).ToList()))
-              continue;
+          if(paths.ContainsKey(neighbour))
+            continue;
+          
+          if (!map.ContainsKey(neighbour) || map[neighbour] == '#' || IsDoorLocked(map[neighbour], keys))
+            continue;
 
-            int minedge = GetMinVal(map, edge);
-            if (minedge != int.MaxValue)
-            {
-              if (map[edge.Y, edge.X].Item2 != minedge + 1)
-              {
-                if (IsKey(map[edge.Y, edge.X].Item1) && !keysFound.Any( k => k.Item1 == map[edge.Y, edge.X].Item1) && !keys.Any(k => k.Item1 == map[edge.Y, edge.X].Item1))
-                  keysFound.Add(new Tuple<char, Tuple<Point, int>>(map[edge.Y, edge.X].Item1, new Tuple<Point, int>(new Point(edge.X, edge.Y), minedge + 1)));
+          if (paths.ContainsKey(neighbour))
+            paths[neighbour] = GetMin(paths, neighbour) + 1;
+          else
+            paths.Add(neighbour, GetMin(paths, neighbour) + 1);
 
-                map[edge.Y, edge.X] = new Tuple<char, int>(map[edge.Y, edge.X].Item1, minedge + 1);
-                discovered++;
-              }
-            }
-          }
+          queue.Enqueue(neighbour);
 
-          radius++;
+          if (IsKey(map[neighbour]) && !keys.Contains(map[neighbour]))
+            foundKeys.Add(new Tuple<char, Point, int>(map[neighbour], neighbour, paths[neighbour]));
         }
       }
 
-      return keysFound;
+      return foundKeys;
+    }
+
+    static int GetMin(Dictionary<Point, int> map, Point current)
+    {
+      int min = int.MaxValue;
+      foreach (var dir in directions)
+      {
+        Point neightbour = new Point(current.X + dir.X, current.Y + dir.Y);
+        if (map.ContainsKey(neightbour) && map[neightbour] < min)
+          min = map[neightbour];
+      }
+
+      return min;
     }
 
 
