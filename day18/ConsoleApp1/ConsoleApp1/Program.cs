@@ -39,39 +39,60 @@ namespace ConsoleApp1
           }
       }
 
-      PrintMap(map);
+      //PrintMap(map);
+
+      Dictionary<char, int> result = new Dictionary<char, int>();
+
+      var foundkeys = Lee(map, start);
+
+      Dictionary<char, Dictionary<char, ScannedPoint>> stepsBetweenKeys = new Dictionary<char, Dictionary<char, ScannedPoint>>();
+      stepsBetweenKeys.Add('?', foundkeys);
+
+      foreach (var foundKey in foundkeys)
+        stepsBetweenKeys.Add(foundKey.Key, Lee(map, foundKey.Value.Point));
+
 
       //var lee = Lee(map, start, new List<char>());
-      Go(map, new List<char>(), start, 0);
+      Go(stepsBetweenKeys, new List<char>() { '?' }, 0);
       Console.WriteLine(min);
     }
 
     static int min = int.MaxValue;
 
-    static void Go(Dictionary<Point, char> map, List<char> keys, Point start, int total)
+    static void Go(Dictionary<char, Dictionary<char, ScannedPoint>> scannedKeys, List<char> keys, int total)
     {
+      char lasKey = keys.Last();
+
       if (total >= min)
         return;
 
-      Dictionary<char, int> result = new Dictionary<char, int>();
-
-      var foundkeys = Lee(map, start, keys);
-
-      if (keys.Count == totalKeys.Count - 1)
+      if (keys.Count == totalKeys.Count)
       {
-        total += foundkeys[0].Item3;
-        if (min > total)
-          min = total;
-        //Console.WriteLine(total);
+        char last = scannedKeys.First(sk => !keys.Contains(sk.Key)).Key;
+
+        total += scannedKeys[lasKey][last].steps;
+
+        if (total < min)
+        {          
+          min = total ;
+          Console.WriteLine(min + " - "  + new string(keys.ToArray()));
+        }
+
         return;
       }
 
-      foreach (var key in foundkeys)
+      foreach (var kf in scannedKeys)
       {
-        List<char> nextKeys = new List<char>(keys);
-        nextKeys.Add(key.Item1);
+        if (keys.Contains(kf.Key))
+          continue;
 
-        Go(map, nextKeys, key.Item2, total + key.Item3);
+        if(scannedKeys[lasKey][kf.Key].BlockingDoors.Except(keys).Any())
+          continue;
+
+        List<char> nextKeys = new List<char>(keys);
+        nextKeys.Add(kf.Key);
+
+        Go(scannedKeys, nextKeys, total + scannedKeys[lasKey][kf.Key].steps);
       }
     }
 
@@ -84,17 +105,24 @@ namespace ConsoleApp1
       }
     }
 
-    // returns keys
-    static List<Tuple<char, Point, int>> Lee(Dictionary<Point, char> map, Point start, List<char> keys)
+    class ScannedPoint
     {
-      List<Tuple<char, Point, int>> foundKeys = new List<Tuple<char, Point, int>>();
+      public int steps = 0;
+      public Point Point = new Point();
+      public HashSet<char> BlockingDoors = new HashSet<char>();
+    }
+
+    // returns keys
+    static Dictionary<char, ScannedPoint> Lee(Dictionary<Point, char> map, Point start)
+    {
+      Dictionary<char, ScannedPoint> foundKeys = new Dictionary<char, ScannedPoint>();
 
       // lee      
       Queue<Point> queue = new Queue<Point>();
       queue.Enqueue(start);
 
-      Dictionary<Point, int> paths = new Dictionary<Point, int>();
-      paths.Add(start, 0);
+      Dictionary<Point, ScannedPoint> paths = new Dictionary<Point, ScannedPoint>();
+      paths.Add(start, new ScannedPoint() { steps = 0, Point = start });
 
       while (queue.Any())
       {
@@ -104,38 +132,50 @@ namespace ConsoleApp1
         {
           Point neighbour = new Point(p.X + dir.X, p.Y + dir.Y);
 
-          if(paths.ContainsKey(neighbour))
-            continue;
-          
-          if (!map.ContainsKey(neighbour) || map[neighbour] == '#' || IsDoorLocked(map[neighbour], keys))
+          if (paths.ContainsKey(neighbour))
             continue;
 
+          if (!map.ContainsKey(neighbour) || map[neighbour] == '#')
+            continue;
+
+          var minPoint = GetMinStepsPoint(paths, neighbour);
+          int minSteps = minPoint.steps + 1;
+          HashSet<char> doors = new HashSet<char>(minPoint.BlockingDoors);
+
+          if (IsDoor(map[neighbour]))
+            doors.Add(char.ToLower(map[neighbour]));
+
           if (paths.ContainsKey(neighbour))
-            paths[neighbour] = GetMin(paths, neighbour) + 1;
+            paths[neighbour].steps = minSteps;
           else
-            paths.Add(neighbour, GetMin(paths, neighbour) + 1);
+            paths.Add(neighbour, new ScannedPoint() { steps = minSteps, Point = neighbour, BlockingDoors = doors });
 
           queue.Enqueue(neighbour);
 
-          if (IsKey(map[neighbour]) && !keys.Contains(map[neighbour]))
-            foundKeys.Add(new Tuple<char, Point, int>(map[neighbour], neighbour, paths[neighbour]));
+          if (IsKey(map[neighbour]))
+            foundKeys.Add(map[neighbour], paths[neighbour]);
         }
       }
 
       return foundKeys;
     }
 
-    static int GetMin(Dictionary<Point, int> map, Point current)
+    static ScannedPoint GetMinStepsPoint(Dictionary<Point, ScannedPoint> map, Point current)
     {
       int min = int.MaxValue;
+      ScannedPoint minPoint = null;
+
       foreach (var dir in directions)
       {
         Point neightbour = new Point(current.X + dir.X, current.Y + dir.Y);
-        if (map.ContainsKey(neightbour) && map[neightbour] < min)
-          min = map[neightbour];
+        if (map.ContainsKey(neightbour) && map[neightbour].steps < min)
+        {
+          min = map[neightbour].steps;
+          minPoint = map[neightbour];
+        }
       }
 
-      return min;
+      return minPoint;
     }
 
 
@@ -161,6 +201,11 @@ namespace ConsoleApp1
     static bool IsDoorLocked(char c, List<char> keys)
     {
       return c >= 'A' && c <= 'Z' && !keys.Contains(char.ToLower(c));
+    }
+
+    static bool IsDoor(char c)
+    {
+      return c >= 'A' && c <= 'Z';
     }
 
     static bool IsKey(char c)
