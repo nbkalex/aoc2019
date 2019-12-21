@@ -6,6 +6,13 @@ using System.Linq;
 
 namespace day20
 {
+  class TraceVal
+  {
+    public int steps;
+    Point Position;
+    public List<Tuple<string, int, int>> portals = new List<Tuple<string, int, int>>();
+  }
+
   class Program
   {
     static readonly Point Nord = new Point(0, -1);
@@ -17,11 +24,18 @@ namespace day20
 
     static Dictionary<Point, char> map = new Dictionary<Point, char>();
 
+    static bool IsOuterPortal(Point p, int width, int height)
+    {
+      return p.X < 2 || p.X > width - 3 ||
+             p.Y < 2 || p.Y > height - 3;
+    }
+
     static void Main(string[] args)
     {
       using (StreamReader sr = new StreamReader("TextFile1.txt"))
       {
-        Dictionary<string, Point> portals = new Dictionary<string, Point>();
+        Dictionary<string, Point> outerPortals = new Dictionary<string, Point>();
+        Dictionary<string, Point> innerPortals = new Dictionary<string, Point>();
 
         string input = sr.ReadToEnd();
 
@@ -61,10 +75,10 @@ namespace day20
               }
             }
 
+            Dictionary<string, Point> portals = IsOuterPortal(p.Key, lines[0].Length, lines.Length)
+                                                ? outerPortals : innerPortals;
             if (!path.IsEmpty)
             {
-              if (portals.ContainsKey(gateName))
-                gateName = new string(gateName.Reverse().ToArray());
 
               if (gateName == "AA")
                 path = p.Key;
@@ -74,44 +88,121 @@ namespace day20
           }
         }
 
+        Dictionary<int, Dictionary<Point, TraceVal>> levels = new Dictionary<int, Dictionary<Point, TraceVal>>();
+
         // lee
-        Dictionary<Point, int> steps = new Dictionary<Point, int>();
+        levels.Add(0, new Dictionary<Point, TraceVal>());
 
-        Queue<Point> queue = new Queue<Point>();
-        queue.Enqueue(portals["AA"]);
+        Queue<Tuple<Point, int>> queue = new Queue<Tuple<Point, int>>();
+        queue.Enqueue(new Tuple<Point, int>(outerPortals["AA"], 0));
 
-        steps.Add(portals["AA"], 0);
+        levels[0].Add(outerPortals["AA"], new TraceVal() { steps = 0 });
 
-        while (queue.Any())
+        bool found = false;
+        while (queue.Any() && !found)
         {
-          Point p = queue.Dequeue();
+          Tuple<Point, int> p = queue.Dequeue();
 
           foreach (var dir in directions)
           {
-            Point neighbour = new Point(p.X + dir.X, p.Y + dir.Y);
+            Point neighbour = new Point(p.Item1.X + dir.X, p.Item1.Y + dir.Y);
 
-            if (!map.ContainsKey(neighbour) || map[neighbour] == '#' || steps.ContainsKey(neighbour) || map[neighbour] == ' '
-              || (char.IsLetter(map[p]) && char.IsLetter(map[neighbour])))
+            if (neighbour == outerPortals["AA"])
               continue;
 
-            int minVal = GetMinVal(steps, neighbour);
-            if (char.IsLetter(map[neighbour]) && portals.First(portal => portal.Value == p).Key != "AA")
-              neighbour = portals[new string(portals.First(portal => portal.Value == p).Key.Reverse().ToArray())];
+            if (!map.ContainsKey(neighbour) || map[neighbour] == '#' || levels[p.Item2].ContainsKey(neighbour) || map[neighbour] == ' '
+              || (char.IsLetter(map[p.Item1]) && char.IsLetter(map[neighbour])))
+              continue;
 
-            if (!steps.ContainsKey(neighbour))
+            int level = p.Item2;
+            var minVal = GetMinVal(levels[level], neighbour);
+            var minValTrace = new List<Tuple<string, int, int>>(minVal.portals);
+
+            if (char.IsLetter(map[neighbour]) && char.IsDigit(map[p.Item1]))
+              continue;
+
+            Tuple<string, int, int>? portal = null;
+
+            if (char.IsLetter(map[neighbour]))
             {
-              queue.Enqueue(neighbour);
-              steps.Add(neighbour, minVal + 1);
+
+              bool isOuterPortal = IsOuterPortal(neighbour, lines[0].Length, lines.Length);
+
+              Dictionary<string, Point> portals = isOuterPortal ? outerPortals : innerPortals;
+              string portalName = portals.First(portal => portal.Value == p.Item1).Key;
+
+              if (portalName == "ZZ")
+              {
+                if (level == 0)
+                {
+                  found = true;
+                  Console.SetCursorPosition(0, 100);
+                  for(int i = 0; i < minVal.portals.Count; i ++)
+                  {
+                    int stepsval = i == 0 ? minVal.portals[i].Item2 -1 : minVal.portals[i].Item2 - minVal.portals[i-1].Item2;
+                    Console.WriteLine("level " + minVal.portals[i].Item3 + " - " +  minVal.portals[i].Item1 + " - " + stepsval);
+                  }
+
+                  Console.WriteLine();
+                  Console.WriteLine(minVal.steps);
+
+                  break;
+                }
+
+                continue;
+              }
+
+              level = isOuterPortal ? level - 1 : level + 1;
+
+              minValTrace.Add(new Tuple<string, int, int>(portalName, minVal.steps, level));
+
+              Dictionary<string, Point> otherPortals = !isOuterPortal ? outerPortals : innerPortals;
+              neighbour = otherPortals[portalName];
+
+              if (!levels.ContainsKey(level))
+                levels.Add(level, new Dictionary<Point, TraceVal>());
+            }
+
+            if (level == 0 || level == 1)
+              PrintMap(levels[level], level);
+
+            if (!levels[level].ContainsKey(neighbour))
+            {
+              queue.Enqueue(new Tuple<Point, int>(neighbour, level));
+              TraceVal val = new TraceVal() { steps = minVal.steps + 1, portals = minValTrace };
+
+              levels[level].Add(neighbour, val);
+              //PrintMap(levels[level], level);
             }
           }
         }
 
-        Console.WriteLine(steps[portals["ZZ"]]-1);
+        //Console.WriteLine(steps[portals["ZZ"]] - 1);
       }
 
-      static int GetMinVal(Dictionary<Point, int> steps, Point p)
+      static void PrintMap(Dictionary<Point, TraceVal> paths, int level)
+      {
+        //foreach (var p in map)
+        //{
+        //  Console.SetCursorPosition(p.Key.X, p.Key.Y);
+        //  Console.Write(p.Value);
+        //}
+
+
+        //foreach (var p in paths)
+        //{
+        //  Console.SetCursorPosition(p.Key.X, p.Key.Y);
+        //  Console.Write('@');
+        //}
+
+        //Console.SetCursorPosition(50, 2);
+        //Console.Write("current level: " + level + "   ");
+      }
+
+      static TraceVal GetMinVal(Dictionary<Point, TraceVal> steps, Point p)
       {
         int min = int.MaxValue;
+        TraceVal found = null;
         foreach (var dir in directions)
         {
           Point neighbour = new Point(p.X + dir.X, p.Y + dir.Y);
@@ -119,11 +210,14 @@ namespace day20
           if (!steps.ContainsKey(neighbour))
             continue;
 
-          if (steps[neighbour] < min)
-            min = steps[neighbour];
+          if (steps[neighbour].steps < min)
+          {
+            min = steps[neighbour].steps;
+            found = steps[neighbour];
+          }
         }
 
-        return min;
+        return found;
       }
     }
   }
