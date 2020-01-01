@@ -50,51 +50,39 @@ namespace ConsoleApp1
 
       foreach (var foundKey in foundkeys)
         stepsBetweenKeys.Add(foundKey.Key, Lee(map, foundKey.Value.Point));
+      
+      Dictionary<string, int> roadSteps = new Dictionary<string, int>();
 
+      Queue<Tuple<string, int>> nextKeys = new Queue<Tuple<string, int>>();
+      nextKeys.Enqueue(new Tuple<string, int>("?",0));
 
-      //var lee = Lee(map, start, new List<char>());
-      Go(stepsBetweenKeys, new List<char>() { '?' }, 0);
+      int min = int.MaxValue;
+
+      while (nextKeys.Any())
+      {
+        var current = nextKeys.Dequeue();
+        
+        if(current.Item1.Length == stepsBetweenKeys.Count)
+        {
+          if(min > current.Item2) 
+            min = current.Item2;
+          continue;
+        }
+
+        foreach (var key in stepsBetweenKeys.Keys.Except(current.Item1))
+        {
+          var nextKey = stepsBetweenKeys[current.Item1.Last()][key];
+          if (nextKey.BlockingDoors.Except(current.Item1).Any() || current.Item2 + nextKey.steps > min)
+            continue;
+
+          var next = new Tuple<string, int>(current.Item1 + key, current.Item2 + nextKey.steps);
+          nextKeys.Enqueue(next);
+        }
+      }
+
       Console.WriteLine(min);
     }
 
-    static int min = int.MaxValue;
-
-    static void Go(Dictionary<char, Dictionary<char, ScannedPoint>> scannedKeys, List<char> keys, int total)
-    {
-      char lasKey = keys.Last();
-
-      if (total >= min)
-        return;
-
-      if (keys.Count == totalKeys.Count)
-      {
-        char last = scannedKeys.First(sk => !keys.Contains(sk.Key)).Key;
-
-        total += scannedKeys[lasKey][last].steps;
-
-        if (total < min)
-        {          
-          min = total ;
-          Console.WriteLine(min + " - "  + new string(keys.ToArray()));
-        }
-
-        return;
-      }
-
-      foreach (var kf in scannedKeys)
-      {
-        if (keys.Contains(kf.Key))
-          continue;
-
-        if(scannedKeys[lasKey][kf.Key].BlockingDoors.Except(keys).Any())
-          continue;
-
-        List<char> nextKeys = new List<char>(keys);
-        nextKeys.Add(kf.Key);
-
-        Go(scannedKeys, nextKeys, total + scannedKeys[lasKey][kf.Key].steps);
-      }
-    }
 
     static void PrintMap(Dictionary<Point, char> map)
     {
