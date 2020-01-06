@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 
 namespace day22
 {
@@ -33,11 +34,11 @@ namespace day22
 
     static long RevertRotate(int n, long search)
     {
-        return search + n % BIG_DECK_SIZE;
+      return (BIG_DECK_SIZE + search + n) % BIG_DECK_SIZE;
     }
 
-    const int DECK_SIZE = 10007;
-    const long BIG_DECK_SIZE = /*10007;*/119315717514047;
+    //const int DECK_SIZE = 10007;
+    const long BIG_DECK_SIZE = /*10007*/119315717514047;
     const int SEARCH = 1;
 
     static void Main(string[] args)
@@ -66,15 +67,51 @@ namespace day22
 
         shuffleTypesInverted.Reverse();
 
-        long current = 2020;
+        long b = 0;
+        foreach (var shuffle in shuffleTypesInverted)
+          b = shuffle.Item1(shuffle.Item2, b);
 
-        for (long i = 0; i < 101741582076661; i++)
-        {
-          foreach (var shuffle in shuffleTypesInverted)
-            current = shuffle.Item1(shuffle.Item2, current);
+        Console.WriteLine(b);
 
-            Console.WriteLine(current);
-        }
+        long a = 1;
+
+        foreach (var shuffle in shuffleTypesInverted)
+          a = shuffle.Item1(shuffle.Item2, a);
+
+        a += BIG_DECK_SIZE - b;
+        Console.WriteLine(a);
+
+        BigInteger res = 2020 * a + b;
+        Console.WriteLine(res % BIG_DECK_SIZE);
+
+        long c = 2020;
+
+        foreach (var shuffle in shuffleTypesInverted)
+          c = shuffle.Item1(shuffle.Item2, c);
+
+        foreach (var shuffle in shuffleTypesInverted)
+          c = shuffle.Item1(shuffle.Item2, c);
+
+        foreach (var shuffle in shuffleTypesInverted)
+          c = shuffle.Item1(shuffle.Item2, c);
+
+        Console.WriteLine(c);
+
+        BigInteger a1 = a;
+        BigInteger b1 = b;
+        BigInteger x = 2020;
+
+        // 101741582076661
+        BigInteger times= 101741582076661;
+
+        BigInteger res_2 = (BigInteger.ModPow(a1, 3, BIG_DECK_SIZE) * x + BigInteger.ModPow(a1, 2, BIG_DECK_SIZE) * b1 + a1 * b1 + b1)% BIG_DECK_SIZE;
+        Console.WriteLine(res_2);
+
+
+        var a_a_times_1 = (a1 * (BigInteger.ModPow(a1, times-1, BIG_DECK_SIZE) - 1) * BigInteger.ModPow(a1-1, BIG_DECK_SIZE - 2, BIG_DECK_SIZE) + 1);
+        BigInteger resFinal = (BigInteger.ModPow(a1, times, BIG_DECK_SIZE) * x % BIG_DECK_SIZE +  b1 * a_a_times_1) % BIG_DECK_SIZE;
+
+        Console.WriteLine(resFinal);
       }
     }
 
