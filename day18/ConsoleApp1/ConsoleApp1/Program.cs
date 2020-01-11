@@ -48,32 +48,53 @@ namespace ConsoleApp1
       Dictionary<char, Dictionary<char, ScannedPoint>> stepsBetweenKeys = new Dictionary<char, Dictionary<char, ScannedPoint>>();
       stepsBetweenKeys.Add('?', foundkeys);
 
+      Dictionary<char, Dictionary<string, int>> minRoads = new Dictionary<char, Dictionary<string, int>>();
       foreach (var foundKey in foundkeys)
+      {
         stepsBetweenKeys.Add(foundKey.Key, Lee(map, foundKey.Value.Point));
-      
+        minRoads.Add(foundKey.Key, new Dictionary<string, int>());
+      }
+
       Dictionary<string, int> roadSteps = new Dictionary<string, int>();
 
       Queue<Tuple<string, int>> nextKeys = new Queue<Tuple<string, int>>();
-      nextKeys.Enqueue(new Tuple<string, int>("?",0));
+      nextKeys.Enqueue(new Tuple<string, int>("?", 0));
 
       int min = int.MaxValue;
 
       while (nextKeys.Any())
       {
         var current = nextKeys.Dequeue();
-        
-        if(current.Item1.Length == stepsBetweenKeys.Count)
-        {
-          if(min > current.Item2) 
-            min = current.Item2;
-          continue;
-        }
 
         foreach (var key in stepsBetweenKeys.Keys.Except(current.Item1))
         {
           var nextKey = stepsBetweenKeys[current.Item1.Last()][key];
           if (nextKey.BlockingDoors.Except(current.Item1).Any() || current.Item2 + nextKey.steps > min)
             continue;
+
+
+          string newRoad = current.Item1 + key;
+          string hashRoad = string.Concat(newRoad.OrderBy(c => c)) + key;
+          int len = current.Item2 + stepsBetweenKeys[current.Item1.Last()][key].steps;
+
+          if (newRoad.Length == stepsBetweenKeys.Count)
+          {
+            if (min > len)
+            {
+              min = len;
+              Console.WriteLine(min);
+            }
+          }
+
+          if (minRoads[key].ContainsKey(hashRoad))
+          {
+            if (minRoads[key][hashRoad] > len)
+              minRoads[key][hashRoad] = current.Item2 + nextKey.steps; 
+            else
+              continue;
+          }
+          else
+            minRoads[key].Add(hashRoad, len);
 
           var next = new Tuple<string, int>(current.Item1 + key, current.Item2 + nextKey.steps);
           nextKeys.Enqueue(next);
